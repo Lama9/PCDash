@@ -1,0 +1,16 @@
+{
+  "codename": "yahei14",
+  "ttf_path": "/assets/fonts/MicrosoftYaHei.ttf",
+  "bin_path": "/assets/fonts\\ui_font_yahei14.bin",
+  "c_path": "/assets/fonts\\ui_font_yahei14.c",
+  "cfg_path": "/assets/fonts\\ui_font_yahei14.fcfg",
+  "size": 14,
+  "bpp": 1,
+  "letters": 0,
+  "ranges": [
+    "0x20-0x7f"
+  ],
+  "symbols": "星期一二三四五六日年月甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥正腊冬初廿三十立春雨水惊蛰分清谷夏满芒至暑处秋白露寒霜降小大雪晴阴多云雾霾风暴雷电热好转湿温度待连接时超七八九闰明种中阵夹冰雹沙尘扬浮台飓强轻重宜忌嫁娶纳采祭祀祈福开市动土修造移徙入宅安葬破出行交易床衣财℃北京东南西级偏少-",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}

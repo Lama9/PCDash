@@ -1,0 +1,14 @@
+{
+  "codename": "shuziyahei48",
+  "ttf_path": "/assets/fonts/MicrosoftYaHei.ttf",
+  "bin_path": "/assets/fonts\\ui_font_shuziyahei48.bin",
+  "c_path": "/assets/fonts\\ui_font_shuziyahei48.c",
+  "cfg_path": "/assets/fonts\\ui_font_shuziyahei48.fcfg",
+  "size": 48,
+  "bpp": 4,
+  "letters": 0,
+  "ranges": [],
+  "symbols": "1234567890:",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}

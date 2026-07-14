@@ -1,0 +1,37 @@
+# PCDash 默认配置
+device_name: ""               # 留空则自动使用系统主机名 (socket.gethostname())
+
+serial:
+  enabled: false
+  port: auto              # auto = 自动扫描 CH340/CP2104
+  baud: 115200
+  interval: 2             # 推送间隔 (秒)
+
+wifi:
+  enabled: true
+  host: 0.0.0.0
+  port: 8266
+
+gpu:
+  enabled: true
+  device_index: 0         # 第几块 GPU
+
+weather:
+  enabled: true
+  provider: openweathermap  # openweathermap | open_meteo | qweather
+  location: auto            # auto = IP 自动定位
+  # city: "Tokyo"
+  # lat: 35.6762
+  # lon: 139.6503
+  units: metric             # metric / imperial
+  interval: 1800            # 采集间隔 (秒)
+  openweathermap:
+    api_key: ""
+  qweather:
+    api_key: ""
+    api_host: ""            # 例: k23p43k86j.re.qweatherapi.com
+  open_meteo: {}            # 免费，无需 Key
+
+background:
+  enabled: false
+  image_path: ""          # 背景图路径（JPEG 格式，建议 320x240 分辨率）

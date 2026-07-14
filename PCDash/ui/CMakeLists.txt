@@ -1,0 +1,10 @@
+SET(SOURCES ui_comp_pnl_statusbar.c
+    ui_comp.c
+    ui_scrmain.c
+    ui.c
+    ui_comp_hook.c
+    ui_helpers.c
+    fonts/ui_font_shuziyahei48.c
+    fonts/ui_font_yahei14.c)
+
+add_library(ui ${SOURCES})

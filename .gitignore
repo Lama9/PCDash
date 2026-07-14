@@ -1,0 +1,128 @@
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs and Editors #
+####################
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.vscode/c_cpp_properties.json
+.vscode/ipch/
+.idea/
+*.swp
+*.swo
+*.suo
+*.sln
+
+# Python #
+##########
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Arduino / ESP32 / PlatformIO #
+################################
+*.hex
+*.elf
+*.bin
+*.map
+*.elf.map
+*.o
+*.a
+*.sym
+*.eep
+*.obj
+*.lst
+*.bak
+
+# Arduino IDE 2.x / Arduino CLI
+build/
+.arduino*/
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Logs and databases #
+######################
+*.log
+*.sqlite
+*.db
+
+# Archives #
+############
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Custom / User Ignores #
+#########################
+demo/
+bak/
+PCDash/.understand-anything/
+pcdash-server/pcdash_config.yaml
+bash.exe.stackdump
+
