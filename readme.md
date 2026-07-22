@@ -175,6 +175,25 @@ sudo systemctl start pcdash
 > sudo udevadm trigger -s powercap
 > ```
 
+**手工验证服务是否正常运行：**
+
+```bash
+# 1. 服务当前是否在跑
+systemctl status pcdash
+
+# 2. 是否真的注册了开机自启（权威判断，不要只看 status 里的 enabled 字样）
+systemctl is-enabled pcdash
+
+# 3. 看日志，确认没有报错/异常重启
+journalctl -u pcdash -n 50 --no-pager
+journalctl -u pcdash -f          # 实时跟随，Ctrl+C 退出
+
+# 4. 功能级验证：直接打 API，看数据是否正常（尤其 cpu_w 是否还是 null）
+curl -s http://127.0.0.1:18266/api/status | python3 -m json.tool
+```
+
+最硬核的验证是重启一次服务器，确认服务自动拉起（`sudo reboot` 后 `systemctl status pcdash` 应为 `active (running)`），但平时不必为了验证专门重启，`is-enabled` + `status` 已足够可靠地证明"配置正确，下次开机会自启"。
+
 ### 3. 配置文件
 
 首次运行后会在用户目录生成 `pcdash_config.yaml`，也可直接编辑 `pcdash-server/config/default_config.yaml`：
