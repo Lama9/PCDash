@@ -9,6 +9,7 @@ CC 触发 Hook 时会将事件 JSON 写入本进程 stdin，本脚本读取后�
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -75,6 +76,7 @@ def post_status(server: str, payload: dict, state: str) -> None:
         "event":      payload.get("hook_event_name", ""),
         "cwd":        cwd,
         "label":      label,
+        "pid":        os.getppid(),  # 父进程 = 触发本次 Hook 的 CC 会话进程，供服务端判断该会话是否还存活
     }).encode("utf-8")
 
     req = urllib.request.Request(

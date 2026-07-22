@@ -480,10 +480,23 @@ C:\Users\{用户名}\.claude\settings.json
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"X:\\esp\\PCDash\\pcdash-server\\cc_hook.py\" --server http://127.0.0.1:8266",
+            "timeout": 3
+          }
+        ]
+      }
     ]
   }
 }
 ```
+
+> **补充说明（2026-07-22 新增）**：早期版本只配置了前 5 个 Hook，未配置 `SessionEnd`，导致 `cc_hook.py` 里 `SessionEnd → "off"` 的映射从未被触发——正常退出 CC 也不会清除服务端 session，只能靠超时兜底（`success`/`busy` 等非 alarm 状态的兜底 TTL 长达 8 小时）。补上 `SessionEnd` 后，正常退出可以立即清除，无需等待超时。
 
 #### cc_hook.py 工作流程
 
@@ -565,7 +578,8 @@ NOTIFICATION_TO_STATE = {
 | 新增 `POST /api/cc-status` 路由 | `transport/http_server.py` | 接收 Hook 脚本上报，维护内存 session 字典 |
 | 新增 `GET /api/cc-status` 路由 | `transport/http_server.py` | 供调试用，ESP 端不直接调用 |
 | **CC 状态嵌入 `/api/status` 响应** | `transport/http_server.py` | `api_status()` 在返回前注入 `cc` 字段，ESP 无需额外轮询 |
-| alarm/error 状态 TTL 延长至 300s | `transport/http_server.py` | 防止等待 permission 时 30s 就过期消失 |
+| alarm/error 状态 TTL 延长至 720s（12分钟） | `transport/http_server.py` | 防止等待 permission 时过早过期消失（`_CC_ALARM_TTL`） |
+| **心跳续期改为按 session 的 pid 判断存活（2026-07-22）** | `cc_hook.py` + `transport/http_server.py` | 原实现用 `tasklist` 检测"电脑上是否存在任意一个 claude.exe 进程"，只要存在就把所有 alarm/error session 无差别续期——导致触发报警的会话早已退出，但只要机器上还有别的 CC 在跑，红灯就永远续命清不掉。修复后：`cc_hook.py` 用 `os.getppid()` 把触发本次事件的 CC 进程 pid 一并上报；`_heartbeat_loop` 用 `psutil.pid_exists(pid)` 逐个 session 判断，只续期真正还活着的那个会话，死掉的会话不再续期，最多 12 分钟内自然过期 |
 
 `/api/status` 响应中 `cc` 字段结构：
 ```json
@@ -639,6 +653,8 @@ NOTIFICATION_TO_STATE = {
 | 触摸事件绑定（CC 按钮） | ✅ 已完成 | `ui_events.cpp`；点击 → 详情页，返回 → 主页 |
 | 触摸 180° 坐标修正 | ✅ 已完成 | `drivers/lv_port_indev.cpp` |
 | K4 引脚复用（移除按键，改 LED）| ✅ 已完成 | `config.h` + `lv_port_indev.cpp` |
+| 心跳续期改为按 pid 判断存活 | ✅ 已完成（2026-07-22） | `cc_hook.py` 上报 `pid`；`http_server.py` `_heartbeat_loop` 用 `psutil.pid_exists()` 逐 session 判断，替换原先的全局 `tasklist` 检测 |
+| `SessionEnd` Hook 补全 | ✅ 已完成（2026-07-22） | 全局 `settings.json` 新增 `SessionEnd` 事件，正常退出可立即清除 session，无需等待超时 |
 
 ## 十三、后续优化方向（可选）
 

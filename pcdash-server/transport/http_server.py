@@ -1,9 +1,9 @@
 """HTTP 服务 — Flask 提供 /api/status 和 /api/background 接口供 ESP 轮询"""
 
-import subprocess
 import time
 import threading
 import logging
+import psutil
 from flask import Flask, jsonify, Response, request
 
 logger = logging.getLogger(__name__)
@@ -97,6 +97,7 @@ def api_cc_status_post():
     event      = data.get("event", "")
     label      = data.get("label", "")
     cwd        = data.get("cwd", "")
+    pid        = data.get("pid")
 
     with _lock:
         if state == "off":
@@ -112,6 +113,7 @@ def api_cc_status_post():
                 "event":      event,
                 "label":      label,
                 "cwd":        cwd,
+                "pid":        pid,
                 "updated_at": time.time(),
             }
 
@@ -158,37 +160,21 @@ def api_cc_status_get():
 
 
 _CC_HEARTBEAT_INTERVAL = 300     # 5 分钟检测一次
-_CC_PROCESS_NAMES = {"claude.exe", "Claude.exe"}
-
-
-def _is_cc_running() -> bool:
-    """检测 Windows 进程列表中是否存在 CC 进程"""
-    try:
-        out = subprocess.check_output(
-            ["tasklist", "/fo", "csv", "/nh"],
-            text=True, timeout=5, stderr=subprocess.DEVNULL
-        )
-        for line in out.splitlines():
-            name = line.split('","')[0].strip('"')
-            if name in _CC_PROCESS_NAMES:
-                return True
-    except Exception:
-        pass
-    return False
 
 
 def _heartbeat_loop() -> None:
-    """后台线程：CC 存活时每 5 分钟刷新 alarm/error session 的 updated_at"""
+    """后台线程：每 5 分钟按 session 各自的 pid 判断是否还存活，只续期真正活着的 alarm/error session"""
     while True:
         time.sleep(_CC_HEARTBEAT_INTERVAL)
-        if not _is_cc_running():
-            continue
         now = time.time()
         with _lock:
             for sid, s in _cc_sessions.items():
-                if s["state"] in ("alarm", "error"):
+                if s["state"] not in ("alarm", "error"):
+                    continue
+                pid = s.get("pid")
+                if pid and psutil.pid_exists(pid):
                     s["updated_at"] = now
-                    logger.debug("[CC] 心跳续期 session=%.8s state=%s", sid, s["state"])
+                    logger.debug("[CC] 心跳续期 session=%.8s state=%s pid=%s", sid, s["state"], pid)
 
 
 def start_server(host: str = "0.0.0.0", port: int = 8266) -> threading.Thread:
