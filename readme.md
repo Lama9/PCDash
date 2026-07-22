@@ -158,10 +158,22 @@ python pcdash-server\main.py --headless
 **Linux systemd 服务：**
 
 ```bash
+# 先编辑 pcdash-server/service/pcdash.service，把 <username> 替换成实际运行用户名
+# （默认假定部署路径为 /home/<username>/pcdash-server，含 venv）
 sudo cp pcdash-server/service/pcdash.service /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl enable pcdash
 sudo systemctl start pcdash
 ```
+
+> **CPU 功率（`cpu_w`）在 Linux 上一直是 `null`？** 服务以普通用户运行时，内核默认禁止非 root 读取 RAPL 功率
+> sysfs 文件（Platypus 侧信道漏洞修复导致），需要额外授权一次（sysfs 不支持 ACL，用 chgrp+chmod）：
+> ```bash
+> # 编辑 pcdash-server/service/99-rapl-pcdash.rules，把 <username> 换成实际运行服务的 Linux 用户名
+> sudo cp pcdash-server/service/99-rapl-pcdash.rules /etc/udev/rules.d/
+> sudo udevadm control --reload-rules
+> sudo udevadm trigger -s powercap
+> ```
 
 ### 3. 配置文件
 

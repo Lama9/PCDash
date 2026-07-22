@@ -1,11 +1,16 @@
+# 部署前请把下面两处 <username> 替换为实际运行 pcdash-server 的 Linux 用户名，
+# 并确认代码实际部署在 /home/<username>/pcdash-server（venv 也在这个目录下）。
+# 若部署路径不同，请同步调整 WorkingDirectory / ExecStart。
+
 [Unit]
 Description=PCDash Monitor Service
 After=network.target
 
 [Service]
 Type=simple
-User=%i
-ExecStart=/usr/bin/python3 /opt/pcdash/main.py
+User=<username>
+WorkingDirectory=/home/<username>/pcdash-server
+ExecStart=/home/<username>/pcdash-server/venv/bin/python /home/<username>/pcdash-server/main.py
 Restart=always
 RestartSec=5
 

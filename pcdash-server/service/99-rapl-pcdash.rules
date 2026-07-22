@@ -1,0 +1,15 @@
+# 允许 pcdash-server 运行用户读取 Intel RAPL CPU 功率数据（/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj）
+#
+# 背景：该 sysfs 文件自 Linux 内核修复 Platypus 侧信道漏洞（CVE-2020-8695）后默认仅 root 可读，
+# 普通用户运行的 systemd 服务会静默读取失败，表现为 cpu_w 字段一直为 null。
+# 注意：sysfs 不支持 POSIX ACL，setfacl 会报"不支持的操作"（已实测验证），
+# 只能用标准 chgrp + chmod 权限位。权限在每次开机 / RAPL 设备热插拔时都会重置，
+# 因此用 udev 规则在设备出现时自动重新授权，而不是手动改一次性（重启后失效）。
+#
+# 部署步骤：
+#   1. 将下面 <username> 替换为实际运行 pcdash-server 的 Linux 用户名（与 pcdash.service 里 User= 一致）
+#   2. sudo cp 99-rapl-pcdash.rules /etc/udev/rules.d/
+#   3. sudo udevadm control --reload-rules
+#   4. sudo udevadm trigger -s powercap   # 立即生效，无需重启
+
+SUBSYSTEM=="powercap", KERNEL=="intel-rapl:0", RUN+="/usr/bin/chgrp <username> /sys%p/energy_uj", RUN+="/usr/bin/chmod 0440 /sys%p/energy_uj"
