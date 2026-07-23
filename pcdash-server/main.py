@@ -94,6 +94,14 @@ def _collector_loop(cfg: dict, serial_sender: SerialSender):
         weather_collector = WeatherCollector(wth_cfg)
 
     logger.info("数据采集循环启动 (间隔 %ds)", interval)
+
+    lunar = get_lunar()
+    if lunar:
+        jq_suffix = f" 今日节气: {lunar['jq']}" if lunar["jq"] else ""
+        logger.info("农历信息: %s%s %s%s%s",
+                    lunar["gz_y"], lunar["gz_m"], lunar["mo"], lunar["dy"], jq_suffix)
+    else:
+        logger.warning("农历信息计算失败")
     # _loop_count = 0
 
     while not _stop_event.is_set():
@@ -219,6 +227,11 @@ def main():
     logger.info("=" * 40)
     logger.info("PCDash Monitor Service 启动")
     logger.info("=" * 40)
+
+    now_local = datetime.now().astimezone()
+    logger.info("系统时间: %s (时区: %s, UTC偏移: %s)",
+                now_local.strftime("%Y-%m-%d %H:%M:%S %A"),
+                now_local.tzname(), now_local.strftime("%z"))
 
     cfg = load_config()
     resolved_name = cfg.get("device_name") or socket.gethostname()
