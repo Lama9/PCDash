@@ -1,5 +1,9 @@
 # PCDash — 桌面PC实时监控屏幕 产品需求文档 (PRD)
 
+> **变更记录**  
+> 日期：2026-11-19  
+> 修改模型：Gemini 3.8 Flash  
+
 > **版本:** v1.5
 > **日期:** 2026-06-23
 > **状态:** 迭代更新
@@ -600,6 +604,7 @@ background:
 | 1 | 1 | （保留，原背光亮度，v1.5 废弃） |
 | 2 | 1 | 主题 (0=暗, 1=亮) |
 | 3 | 1 | 自动轮播 (0/1) |
+| 4-5 | 2 | 自动轮播时间 (uint16_t 小端，秒，默认 3) |
 | 10-41 | 32 | WiFi SSID |
 | 42-73 | 32 | WiFi 密码 |
 | 80-127 | 48 | PC IP 列表 (3×16 bytes) |
@@ -613,9 +618,15 @@ background:
 | WIFI | `WIFI:ssid,password` | `WIFI:MyNet,pass123` | 设置 WiFi 凭据 |
 | PCIP | `PCIP:index,ip` | `PCIP:0,192.168.1.100` | 设置槽位 IP |
 | PORT | `PORT:index,port` | `PORT:0,18266` | 设置槽位端口（v1.5 新增独立端口） |
+| DELPC | `DELPC:index` | `DELPC:0` | 删除指定槽位 PC 配置，自动前移并重启轮询 Task |
 | STATUS | `STATUS` | `STATUS` | 打印系统全状态（v1.5 新增） |
+| PREV | `PREV` 或 `PAGE:PREV` | `PREV` | 翻到上一页（上一台设备），重置自动轮播计时并刷新屏幕 |
+| NEXT | `NEXT` 或 `PAGE:NEXT` | `NEXT` | 翻到下一页（下一台设备），重置自动轮播计时并刷新屏幕 |
+| AUTOSCROLL | `AUTOSCROLL:1` 或 `0` | `AUTOSCROLL:1` | 开启（`1`/`ON`）或关闭（`0`/`OFF`）设备自动轮播，写入 EEPROM 持久化 |
+| SCROLLTIME | `SCROLLTIME:sec` | `SCROLLTIME:5` | 设置设备自动轮播时间间隔（秒，默认 3，范围 1~3600），写入 EEPROM 持久化 |
+| HELP | `HELP` | `HELP` | 在串口打印所有配置命令的详细使用帮助（只打印说明，不改配置） |
 
-> **v1.5 变更：** `PORT` 命令从全局 `PORT:8266` 改为每槽位 `PORT:index,port`；新增 `STATUS` 命令。
+> **v1.5 变更：** `PORT` 命令从全局 `PORT:8266` 改为每槽位 `PORT:index,port`；新增 `STATUS`、`DELPC`、翻页指令 `PREV`/`NEXT`、自动轮播开关 `AUTOSCROLL`、轮播间隔设置 `SCROLLTIME` 及 `HELP` 帮助命令。
 
 ---
 

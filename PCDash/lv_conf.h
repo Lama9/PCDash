@@ -68,8 +68,12 @@
 /* ==================
  * 性能监视器（调试用，正式版关闭）
  * ================== */
+#ifndef LV_USE_PERF_MONITOR
 #define LV_USE_PERF_MONITOR 1
+#endif
+#ifndef LV_USE_PERF_MONITOR_POS
 #define LV_USE_PERF_MONITOR_POS LV_ALIGN_BOTTOM_RIGHT
+#endif
 
 /* ==================
  * 字体配置

@@ -104,6 +104,7 @@ struct AppState {
   byte currentPC;
   byte pcCount;
   bool autoScroll;
+  uint16_t autoScrollSec;  // 自动轮换间隔（秒），默认 3
   bool darkTheme;
   // byte brightness;  // 硬件无调光电路，已移除
   unsigned long lastPageSwitch;

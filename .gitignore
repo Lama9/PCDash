@@ -122,6 +122,7 @@ build/
 #########################
 demo/
 bak/
+.claude/
 PCDash/.understand-anything/
 pcdash-server/pcdash_config.yaml
 bash.exe.stackdump

@@ -2,6 +2,9 @@
 
 extern CCStatus ccStatus;
 extern AppState app;
+extern void datahub_prevPC();
+extern void datahub_nextPC();
+extern void settings_save();
 
 static bool wifiEnabled = false;
 static bool wifiConnected = false;
@@ -199,7 +202,7 @@ void wifi_handleCommand(const String &cmd) {
     Serial.println("\n====== PCDash STATUS ======");
     Serial.printf("  运行时长: %luh%lum%lus\n", h, m, s);
     Serial.printf("  系统状态: %s (%d)\n", stName, app.sysState);
-    Serial.printf("  自动切换: %s\n", app.autoScroll ? "ON" : "OFF");
+    Serial.printf("  自动切换: %s (间隔: %u秒)\n", app.autoScroll ? "ON" : "OFF", app.autoScrollSec > 0 ? app.autoScrollSec : 3);
 
     // WiFi
     Serial.println("------ WiFi ------");
@@ -265,6 +268,80 @@ void wifi_handleCommand(const String &cmd) {
 #endif
 
     Serial.println("===========================\n");
+    Serial.flush();
+  }
+  // PREV / PAGE:PREV — 上一页 / 上一台 PC
+  else if (cmd.equalsIgnoreCase("PREV") || cmd.equalsIgnoreCase("PAGE:PREV")) {
+    if (app.pcCount <= 1) {
+      Serial.println("[CMD] PREV: 仅有 1 台设备或无在线设备，无需翻页");
+    } else {
+      datahub_prevPC();
+      app.lastManualSwitch = millis();
+      Serial.printf("[CMD] PREV OK: 当前显示 PC%d (%s)\n", app.currentPC, pcData[app.currentPC].id);
+    }
+    Serial.flush();
+  }
+  // NEXT / PAGE:NEXT — 下一页 / 下一台 PC
+  else if (cmd.equalsIgnoreCase("NEXT") || cmd.equalsIgnoreCase("PAGE:NEXT")) {
+    if (app.pcCount <= 1) {
+      Serial.println("[CMD] NEXT: 仅有 1 台设备或无在线设备，无需翻页");
+    } else {
+      datahub_nextPC();
+      app.lastManualSwitch = millis();
+      Serial.printf("[CMD] NEXT OK: 当前显示 PC%d (%s)\n", app.currentPC, pcData[app.currentPC].id);
+    }
+    Serial.flush();
+  }
+  // AUTOSCROLL:1/0/ON/OFF — 开启/关闭设备自动轮换
+  else if (cmd.length() >= 11 && cmd.substring(0, 11).equalsIgnoreCase("AUTOSCROLL:")) {
+    String val = cmd.substring(11);
+    val.trim();
+    if (val.equalsIgnoreCase("1") || val.equalsIgnoreCase("ON") || val.equalsIgnoreCase("TRUE")) {
+      app.autoScroll = true;
+      app.lastPageSwitch = millis();
+      app.lastManualSwitch = millis();
+      settings_save();
+      Serial.println("[CMD] AUTOSCROLL OK: 自动轮播已开启 (ON)");
+    } else if (val.equalsIgnoreCase("0") || val.equalsIgnoreCase("OFF") || val.equalsIgnoreCase("FALSE")) {
+      app.autoScroll = false;
+      settings_save();
+      Serial.println("[CMD] AUTOSCROLL OK: 自动轮播已关闭 (OFF)");
+    } else {
+      Serial.println("[CMD] AUTOSCROLL 格式错误，应为 AUTOSCROLL:1 或 AUTOSCROLL:0 (支持 ON/OFF)");
+    }
+    Serial.flush();
+  }
+  // SCROLLTIME:sec — 设置自动轮换间隔时间（秒）
+  else if (cmd.length() >= 11 && cmd.substring(0, 11).equalsIgnoreCase("SCROLLTIME:")) {
+    String val = cmd.substring(11);
+    val.trim();
+    int sec = val.toInt();
+    if (sec >= 1 && sec <= 3600) {
+      app.autoScrollSec = (uint16_t)sec;
+      app.lastPageSwitch = millis();
+      app.lastManualSwitch = millis();
+      settings_save();
+      Serial.printf("[CMD] SCROLLTIME OK: 自动轮换间隔设置为 %d 秒\n", sec);
+    } else {
+      Serial.println("[CMD] SCROLLTIME 范围无效，应为 1-3600 秒 (如 SCROLLTIME:5)");
+    }
+    Serial.flush();
+  }
+  // HELP / ? — 打印配置命令说明
+  else if (cmd.equalsIgnoreCase("HELP") || cmd.equals("?")) {
+    Serial.println("\n====== PCDash 串口配置命令帮助 ======");
+    Serial.println("  WIFI:ssid,password    - 配置 WiFi SSID 与密码（写入 EEPROM）");
+    Serial.println("  PCIP:index,ip         - 设置槽位 PC IP (0-2, 如 PCIP:0,192.168.1.100)");
+    Serial.println("  PORT:index,port       - 设置槽位 HTTP 轮询端口 (0-2, 默认 18266, 如 PORT:0,18266)");
+    Serial.println("  DELPC:index           - 删除槽位 PC 配置并重排 (如 DELPC:0)");
+    Serial.println("  STATUS                - 打印系统全量运行状态与诊断信息");
+    Serial.println("  PREV / PAGE:PREV      - 翻到上一页（上一台设备）");
+    Serial.println("  NEXT / PAGE:NEXT      - 翻到下一页（下一台设备）");
+    Serial.println("  AUTOSCROLL:1/0        - 开启/关闭设备自动轮换 (支持 ON/OFF，写入 EEPROM)");
+    Serial.println("  SCROLLTIME:sec        - 设置自动轮换时间间隔 (秒，默认 3，范围 1-3600，写入 EEPROM)");
+    Serial.println("  HELP                  - 打印此配置命令帮助说明");
+    Serial.println("  注: 直接发送以 '{' 开头的 JSON 数据帧将通过串口直推通道解析上屏");
+    Serial.println("=====================================\n");
     Serial.flush();
   }
   else {

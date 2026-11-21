@@ -5,6 +5,7 @@
 #define EEPROM_BL_ADDR       1     // 背光亮度
 #define EEPROM_THEME_ADDR    2     // 主题 (0=暗, 1=亮)
 #define EEPROM_AUTOSCRL_ADDR 3     // 自动轮播 (0/1)
+#define EEPROM_SCRLTIME_ADDR 4     // 自动轮播时间 (uint16_t，秒，地址 4-5)
 #define EEPROM_SSID_ADDR     10    // WiFi SSID (32 bytes)
 #define EEPROM_PASS_ADDR     42    // WiFi 密码 (32 bytes)
 #define EEPROM_PC1_IP_ADDR   80    // PC1 IP (16 bytes)
@@ -30,11 +31,14 @@ void settings_load() {
     Serial.println("[Settings] EEPROM 无有效数据，使用默认配置");
     app.darkTheme = true;
     app.autoScroll = false;
+    app.autoScrollSec = 3;
     return;
   }
 
   app.darkTheme   = (EEPROM.read(EEPROM_THEME_ADDR) == 0);
   app.autoScroll  = (EEPROM.read(EEPROM_AUTOSCRL_ADDR) == 1);
+  uint16_t scrlSec = EEPROM.read(EEPROM_SCRLTIME_ADDR) | (EEPROM.read(EEPROM_SCRLTIME_ADDR + 1) << 8);
+  app.autoScrollSec = (scrlSec == 0 || scrlSec == 0xFFFF) ? 3 : scrlSec;
 
   // 读取 WiFi 凭据
   for (int i = 0; i < 32; i++) {
@@ -70,9 +74,10 @@ void settings_load() {
     pc_ports[p] = (port == 0 || port == 0xFFFF) ? DEFAULT_HTTP_PORT : port;
   }
 
-  Serial.printf("[Settings] 已加载: 主题=%s 轮播=%s\n",
+  Serial.printf("[Settings] 已加载: 主题=%s 轮播=%s (间隔%u秒)\n",
                 app.darkTheme ? "暗" : "亮",
-                app.autoScroll ? "开" : "关");
+                app.autoScroll ? "开" : "关",
+                app.autoScrollSec);
   Serial.printf("[Settings] WiFi SSID: [%s]\n", wifi_ssid);
   Serial.printf("[Settings] WiFi PASS: [%s]\n", strlen(wifi_pass) > 0 ? "****" : "");
   Serial.printf("[Settings] PC IP 数量: %d\n", pc_ip_count);
@@ -87,6 +92,8 @@ void settings_save() {
   EEPROM.write(EEPROM_MAGIC_ADDR, EEPROM_MAGIC_VALUE);
   EEPROM.write(EEPROM_THEME_ADDR, app.darkTheme ? 0 : 1);
   EEPROM.write(EEPROM_AUTOSCRL_ADDR, app.autoScroll ? 1 : 0);
+  EEPROM.write(EEPROM_SCRLTIME_ADDR,     app.autoScrollSec & 0xFF);
+  EEPROM.write(EEPROM_SCRLTIME_ADDR + 1, (app.autoScrollSec >> 8) & 0xFF);
   EEPROM.commit();
   yield();
   Serial.println("[Settings] 配置已保存");

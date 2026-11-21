@@ -1,5 +1,9 @@
 # PCDash — 桌面 PC 实时监控屏幕
 
+> **变更记录**  
+> 日期：2026-11-19  
+> 修改模型：Gemini 3.8 Flash  
+
 基于 ESP 系列 MCU + TFT 彩色显示屏的桌面硬件监控小组件。通过 WiFi 或 USB 串口与 PC 端 Python 服务通信，实时展示 CPU、内存、磁盘、网络、GPU、时钟、农历和天气信息。
 
 ---
@@ -272,13 +276,24 @@ Windows 下需借助 [LibreHardwareMonitor](https://github.com/LibreHardwareMoni
 
 ### 串口配置命令
 
-通过串口向 ESP 发送配置命令（PC 端工具或串口终端均可）：
+通过串口向 ESP 发送配置或诊断命令（波特率 115200，以换行符 `\n` 结尾；PC 端工具或串口终端均可）：
 
-| 命令 | 说明 |
-|------|------|
-| `WIFI:ssid,password` | 配置 WiFi 凭据 |
-| `PCIP:0,192.168.1.100` | 设置 PC-0 的 IP 地址 |
-| `PORT:8266` | 设置 HTTP 轮询端口 |
+| 命令 | 格式 | 示例 | 说明 |
+|------|------|------|------|
+| **WIFI** | `WIFI:ssid,password` | `WIFI:MyWiFi,12345678` | 配置 WiFi SSID 与密码（各最长 32 字节），写入 EEPROM 持久化 |
+| **PCIP** | `PCIP:index,ip` | `PCIP:0,192.168.1.100` | 配置指定槽位（`0~2`）的 PC IP 地址，写入 EEPROM；同时重置该槽位端口为默认值 (18266) |
+| **PORT** | `PORT:index,port` | `PORT:0,18266` | 配置指定槽位（`0~2`）的 HTTP 轮询端口（默认 18266），支持各 PC 独立配置端口 |
+| **DELPC** | `DELPC:index` | `DELPC:0` | 删除指定槽位（`0~已配置数-1`）的 PC 配置，清除 IP/端口并自动前移后续槽位，重启轮询 Task |
+| **STATUS** | `STATUS` | `STATUS` | 查询并打印系统全量运行状态（不区分大小写），含运行时长、WiFi、NTP、EEPROM 槽位、运行时设备列表、DHT11 温湿度、内存占用等 |
+| **PREV** | `PREV` 或 `PAGE:PREV` | `PREV` | 翻到上一页（上一台设备），重置自动轮播计时，刷新屏幕 |
+| **NEXT** | `NEXT` 或 `PAGE:NEXT` | `NEXT` | 翻到下一页（下一台设备），重置自动轮播计时，刷新屏幕 |
+| **AUTOSCROLL** | `AUTOSCROLL:1` 或 `0` | `AUTOSCROLL:1` | 开启（`1`/`ON`）或关闭（`0`/`OFF`）设备自动轮播，写入 EEPROM 持久化 |
+| **SCROLLTIME** | `SCROLLTIME:sec` | `SCROLLTIME:5` | 设置设备自动轮播时间间隔（秒，默认 3，范围 1~3600），写入 EEPROM 持久化 |
+| **HELP** | `HELP` | `HELP` | 在串口打印所有配置命令的详细使用帮助（只打印说明，不修改配置） |
+
+> **说明：**
+> - 若串口接收到以 `{` 开头的内容（如 `{"id":"My-PC", ...}\n`），ESP 会自动识别为硬件监控 JSON 数据帧直接解析并刷新屏幕（USB 串口直推通道）。
+> - 配置命令格式要求严格匹配冒号与英文逗号分隔，配置成功后串口会返回 `[CMD] ... OK` 确认信息。
 
 ---
 

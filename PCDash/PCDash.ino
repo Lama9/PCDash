@@ -36,6 +36,35 @@ SemaphoreHandle_t g_data_mutex;  // 跨核数据互斥锁（Core0 Poll Tasks ↔
 extern void cc_led_setup(void);
 extern void cc_led_update(void);
 
+// data_hub.ino 提供
+extern void datahub_checkTimeout(void);
+extern void datahub_prevPC(void);
+extern void datahub_nextPC(void);
+
+// settings.ino 提供
+extern void settings_load(void);
+extern void settings_save(void);
+
+// bg_loader.ino 提供
+extern void bg_init(void);
+
+// dht_sensor.ino 提供
+extern void dht_sensor_setup(void);
+extern void dht_sensor_poll(void);
+
+// wifi_client.ino 提供
+extern void wifi_init(void);
+extern void wifi_poll(void);
+extern void wifi_startPollTasks(void);
+
+// serial_recv.ino 提供
+extern void serial_receive(void);
+
+// diag.ino 提供
+extern void diag_setup(void);
+extern void diag_heap_tick(void);
+extern void diag_wdt_reset(void);
+
 // ════════════════════════════════════════════════════════════
 void setup() {
     Serial.begin(SERIAL_BAUD);
@@ -53,6 +82,7 @@ void setup() {
     app.currentPage      = 0;
     app.currentPC        = 0;
     app.pcCount          = 0;
+    app.autoScrollSec    = 3;
     app.lastPageSwitch   = millis();
     app.lastManualSwitch = 0;
     app.forceRedraw      = false;
@@ -115,8 +145,9 @@ void loop() {
 
     // ── 设备自动轮换 ─────────────────────────────────────────
     if (app.autoScroll && app.sysState == STATE_RUNNING) {
-        if (now - app.lastPageSwitch  >= AUTO_SCROLL_MS &&
-            now - app.lastManualSwitch >= AUTO_SCROLL_MS) {
+        uint32_t scrollInterval = (app.autoScrollSec > 0 ? app.autoScrollSec : 3) * 1000UL;
+        if (now - app.lastPageSwitch  >= scrollInterval &&
+            now - app.lastManualSwitch >= scrollInterval) {
             datahub_nextPC();
             app.lastPageSwitch = now;
         }
