@@ -27,6 +27,16 @@
 #define CC_LED_YLW_PIN  39   // 黄 = busy / thinking
 #define CC_LED_GRN_PIN  40   // 绿 = success
 
+// ======== 音频与硬件模式引脚定义 ========
+#define PIN_BUZZER_PWM    35   // 模式 2: 无源蜂鸣器引脚 (排针 P6)
+#define PIN_I2S_BCLK      35   // 模式 3/4: I2S 位时钟 (排针 P6)
+#define PIN_I2S_LRC       36   // 模式 3/4: I2S 左右声道时钟 (排针 P6)
+#define PIN_I2S_DIN_M3    13   // 模式 3: I2S 数据输入 (借用 CAM_PCLK)
+#define PIN_I2S_DIN_M4    39   // 模式 4: I2S 数据输入 (占用原黄色LED引脚)
+#define PIN_WS2812_DIN    38   // 模式 4: WS2812B 单线灯数据引脚 (占用原红色LED引脚)
+#define PIN_MP3_TX        35   // 模式 5: 串口 MP3 TX (连接到模块 RX)
+#define PIN_MP3_RX        36   // 模式 5: 串口 MP3 RX (连接到模块 TX)
+
 // 触摸屏引脚（T_CS / T_CLK / T_DIN / T_DO）
 #define TOUCH_CS_PIN   1
 #define TOUCH_CLK_PIN  42

@@ -36,6 +36,10 @@ SemaphoreHandle_t g_data_mutex;  // 跨核数据互斥锁（Core0 Poll Tasks ↔
 extern void cc_led_setup(void);
 extern void cc_led_update(void);
 
+// audio_driver.ino 提供
+extern void audio_driver_init(void);
+extern void audio_driver_notify(AudioNotifyType type);
+
 // data_hub.ino 提供
 extern void datahub_checkTimeout(void);
 extern void datahub_prevPC(void);
@@ -82,7 +86,7 @@ void setup() {
     app.currentPage      = 0;
     app.currentPC        = 0;
     app.pcCount          = 0;
-    app.autoScrollSec    = 3;
+    if (app.autoScrollSec == 0) app.autoScrollSec = 3;
     app.lastPageSwitch   = millis();
     app.lastManualSwitch = 0;
     app.forceRedraw      = false;
@@ -109,7 +113,8 @@ void setup() {
     // 注册手势 / 按键事件回调
     ui_events_init();
 
-    // CC 状态 LED
+    // 音频驱动与 CC 状态 LED 初始化
+    audio_driver_init();
     cc_led_setup();
 
     // DHT11 室内温湿度

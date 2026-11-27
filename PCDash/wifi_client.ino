@@ -5,6 +5,13 @@ extern AppState app;
 extern void datahub_prevPC();
 extern void datahub_nextPC();
 extern void settings_save();
+extern void settings_saveAudioEnabled(bool en);
+extern void audio_driver_switchMode(uint8_t mode);
+extern void audio_driver_notify(AudioNotifyType type);
+extern void audio_driver_setVolume(uint8_t vol);
+extern void audio_driver_getMP3Status(bool* online, uint8_t* play_state, uint8_t* disk, uint8_t* vol);
+extern void audio_driver_testMP3();
+extern void audio_driver_playTrack(uint16_t track);
 
 static bool wifiEnabled = false;
 static bool wifiConnected = false;
@@ -204,6 +211,28 @@ void wifi_handleCommand(const String &cmd) {
     Serial.printf("  系统状态: %s (%d)\n", stName, app.sysState);
     Serial.printf("  自动切换: %s (间隔: %u秒)\n", app.autoScroll ? "ON" : "OFF", app.autoScrollSec > 0 ? app.autoScrollSec : 3);
 
+    static const char* hwModeDescs[] = {
+      "",
+      "模式1: 现有无声 (3色LED: 38/39/40, CAM完好)",
+      "模式2: 蜂鸣器 (PWM:35, 3色LED: 38/39/40, CAM完好)",
+      "模式3: I2S功放 (BCLK:35, LRC:36, DIN:13, 3色LED, CAM占用)",
+      "模式4: I2S功放+单线灯 (BCLK:35, LRC:36, DIN:39, WS2812:38, CAM完好)",
+      "模式5: 串口MP3 (TX:35, RX:36, 3色LED: 38/39/40, CAM完好)"
+    };
+    uint8_t hw_m = (app.hardwareMode >= 1 && app.hardwareMode <= 5) ? app.hardwareMode : 1;
+    Serial.printf("  硬件模式: [%d] %s\n", hw_m, hwModeDescs[hw_m]);
+    Serial.printf("  全局发声: %s (音量: %d/30)\n", app.audioEnabled ? "ON (播报中)" : "OFF (全局静音)", app.audioVolume);
+    if (app.hardwareMode == HW_MODE_UART_MP3) {
+      bool mp3_online = false;
+      uint8_t play_st = 0, disk = 0xFF, vol = 0;
+      audio_driver_getMP3Status(&mp3_online, &play_st, &disk, &vol);
+      const char* stStr = (play_st == 1) ? "播放中" : (play_st == 2) ? "暂停" : "停止";
+      const char* diskStr = (disk == 0) ? "U盘" : (disk == 1) ? "TF卡" : (disk == 2) ? "FLASH" : "无介质";
+      Serial.printf("  MP3 模块: %s [存储: %s, 状态: %s, 模块音量: %d]\n",
+                    mp3_online ? "在线 (双向正常)" : "未收到模块回复 (请检查RX/TX接线或供电)",
+                    diskStr, stStr, vol);
+    }
+
     // WiFi
     Serial.println("------ WiFi ------");
     Serial.printf("  SSID: %s\n", wifi_ssid);
@@ -327,6 +356,85 @@ void wifi_handleCommand(const String &cmd) {
     }
     Serial.flush();
   }
+  // MODE:1~5 — 设置硬件外设模式
+  else if (cmd.length() >= 5 && cmd.substring(0, 5).equalsIgnoreCase("MODE:")) {
+    String val = cmd.substring(5);
+    val.trim();
+    int mode = val.toInt();
+    if (mode >= 1 && mode <= 5) {
+      audio_driver_switchMode((uint8_t)mode);
+      static const char* modeNames[] = {
+        "",
+        "模式1: 现有无声模式 (3色分立灯, CAM完好)",
+        "模式2: 蜂鸣器模式 (PWM GPIO35 + 3色分立灯, CAM完好)",
+        "模式3: I2S功放模式 (MAX98357A DIN=13, 借用CAM_PCLK)",
+        "模式4: I2S功放+单线灯 (MAX98357A DIN=39 + WS2812 DIN=38, CAM完好)",
+        "模式5: 串口MP3模式 (HS-S49A-PL TX=35 RX=36 + 3色分立灯, CAM完好)"
+      };
+      Serial.printf("[CMD] MODE OK: 已切换为 %s\n", modeNames[mode]);
+    } else {
+      Serial.println("[CMD] MODE 无效，可选范围 1~5 (如 MODE:2)");
+    }
+    Serial.flush();
+  }
+  // AUDIO:1/0/ON/OFF / MUTE:1/0 — 全局发声开关
+  else if ((cmd.length() >= 6 && cmd.substring(0, 6).equalsIgnoreCase("AUDIO:")) ||
+           (cmd.length() >= 5 && cmd.substring(0, 5).equalsIgnoreCase("MUTE:"))) {
+    bool isMuteCmd = cmd.substring(0, 5).equalsIgnoreCase("MUTE:");
+    String val = isMuteCmd ? cmd.substring(5) : cmd.substring(6);
+    val.trim();
+    bool enable = false;
+    bool valid = false;
+    if (val.equalsIgnoreCase("1") || val.equalsIgnoreCase("ON") || val.equalsIgnoreCase("TRUE")) {
+      enable = !isMuteCmd;
+      valid = true;
+    } else if (val.equalsIgnoreCase("0") || val.equalsIgnoreCase("OFF") || val.equalsIgnoreCase("FALSE")) {
+      enable = isMuteCmd;
+      valid = true;
+    }
+    if (valid) {
+      settings_saveAudioEnabled(enable);
+      Serial.printf("[CMD] AUDIO OK: 语音与提示音已%s\n", enable ? "开启 (ON)" : "关闭 (OFF/静音)");
+      if (enable) {
+        audio_driver_notify(NOTIFY_SUCCESS);
+      }
+    } else {
+      Serial.println("[CMD] AUDIO 格式错误，应为 AUDIO:1 或 AUDIO:0 (支持 ON/OFF)");
+    }
+    Serial.flush();
+  }
+  // VOLUME:level / VOL:level — 设置系统音量 (0~30)
+  else if ((cmd.length() >= 7 && cmd.substring(0, 7).equalsIgnoreCase("VOLUME:")) ||
+           (cmd.length() >= 4 && cmd.substring(0, 4).equalsIgnoreCase("VOL:"))) {
+    bool isShort = cmd.substring(0, 4).equalsIgnoreCase("VOL:");
+    String val = isShort ? cmd.substring(4) : cmd.substring(7);
+    val.trim();
+    int v = val.toInt();
+    if (v >= 0 && v <= 30) {
+      audio_driver_setVolume((uint8_t)v);
+      Serial.printf("[CMD] VOLUME OK: 系统播报音量设置为 %d/30\n", v);
+    } else {
+      Serial.println("[CMD] VOLUME 范围错误，可选 0~30 (如 VOL:25)");
+    }
+    Serial.flush();
+  }
+  // TEST:MP3 — 专门测试 CX-SP5T 模块硬件通信
+  else if (cmd.equalsIgnoreCase("TEST:MP3") || cmd.equalsIgnoreCase("TESTMP3")) {
+    audio_driver_testMP3();
+    Serial.flush();
+  }
+  // PLAY:1~3 — 手动点播测试音效 (1=成功, 2=工作, 3=告警3轮)
+  else if (cmd.length() >= 5 && cmd.substring(0, 5).equalsIgnoreCase("PLAY:")) {
+    String val = cmd.substring(5);
+    val.trim();
+    int track = val.toInt();
+    if (track >= 1 && track <= 10) {
+      audio_driver_playTrack((uint16_t)track);
+    } else {
+      Serial.println("[CMD] PLAY 格式错误，应为 PLAY:1, PLAY:2, PLAY:3");
+    }
+    Serial.flush();
+  }
   // HELP / ? — 打印配置命令说明
   else if (cmd.equalsIgnoreCase("HELP") || cmd.equals("?")) {
     Serial.println("\n====== PCDash 串口配置命令帮助 ======");
@@ -339,6 +447,11 @@ void wifi_handleCommand(const String &cmd) {
     Serial.println("  NEXT / PAGE:NEXT      - 翻到下一页（下一台设备）");
     Serial.println("  AUTOSCROLL:1/0        - 开启/关闭设备自动轮换 (支持 ON/OFF，写入 EEPROM)");
     Serial.println("  SCROLLTIME:sec        - 设置自动轮换时间间隔 (秒，默认 3，范围 1-3600，写入 EEPROM)");
+    Serial.println("  MODE:1~5              - 设置硬件模式 (1:无声, 2:蜂鸣器, 3:I2S+3色灯, 4:I2S+单线灯, 5:串口MP3)");
+    Serial.println("  AUDIO:1/0             - 开启/关闭语音与声音播报 (支持 ON/OFF，写入 EEPROM)");
+    Serial.println("  VOLUME:0~30 / VOL:0~30- 设置系统播报音量 (默认 25，写入 EEPROM)");
+    Serial.println("  PLAY:1~3              - 手动点播提示音测试 (1:成功, 2:工作中, 3:告警3轮)");
+    Serial.println("  TEST:MP3              - 专用 CX-SP5T 硬件串口双向通信诊断");
     Serial.println("  HELP                  - 打印此配置命令帮助说明");
     Serial.println("  注: 直接发送以 '{' 开头的 JSON 数据帧将通过串口直推通道解析上屏");
     Serial.println("=====================================\n");

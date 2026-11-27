@@ -6,6 +6,9 @@
 #define EEPROM_THEME_ADDR    2     // 主题 (0=暗, 1=亮)
 #define EEPROM_AUTOSCRL_ADDR 3     // 自动轮播 (0/1)
 #define EEPROM_SCRLTIME_ADDR 4     // 自动轮播时间 (uint16_t，秒，地址 4-5)
+#define EEPROM_HWMODE_ADDR   6     // 硬件模式 (1~5: 1=无声, 2=蜂鸣器, 3=I2S+3色, 4=I2S+单线, 5=MP3)
+#define EEPROM_AUDIOEN_ADDR  7     // 全局发声开关 (0=关/静音, 1=开)
+#define EEPROM_VOLUME_ADDR   8     // 提示音音量 (0~30，默认 25)
 #define EEPROM_SSID_ADDR     10    // WiFi SSID (32 bytes)
 #define EEPROM_PASS_ADDR     42    // WiFi 密码 (32 bytes)
 #define EEPROM_PC1_IP_ADDR   80    // PC1 IP (16 bytes)
@@ -32,6 +35,9 @@ void settings_load() {
     app.darkTheme = true;
     app.autoScroll = false;
     app.autoScrollSec = 3;
+    app.hardwareMode = HW_MODE_LEGACY;
+    app.audioEnabled = true;
+    app.audioVolume = 25;
     return;
   }
 
@@ -39,6 +45,17 @@ void settings_load() {
   app.autoScroll  = (EEPROM.read(EEPROM_AUTOSCRL_ADDR) == 1);
   uint16_t scrlSec = EEPROM.read(EEPROM_SCRLTIME_ADDR) | (EEPROM.read(EEPROM_SCRLTIME_ADDR + 1) << 8);
   app.autoScrollSec = (scrlSec == 0 || scrlSec == 0xFFFF) ? 3 : scrlSec;
+
+  uint8_t hwMode = EEPROM.read(EEPROM_HWMODE_ADDR);
+  if (hwMode < 1 || hwMode > 5) hwMode = HW_MODE_LEGACY;
+  app.hardwareMode = hwMode;
+
+  uint8_t audioEn = EEPROM.read(EEPROM_AUDIOEN_ADDR);
+  // 0xFF (未初始化) 或 1 均默认为开，仅显式写入 0 为静音
+  app.audioEnabled = (audioEn != 0);
+
+  uint8_t vol = EEPROM.read(EEPROM_VOLUME_ADDR);
+  app.audioVolume = (vol > 30) ? 25 : vol;
 
   // 读取 WiFi 凭据
   for (int i = 0; i < 32; i++) {
@@ -74,10 +91,13 @@ void settings_load() {
     pc_ports[p] = (port == 0 || port == 0xFFFF) ? DEFAULT_HTTP_PORT : port;
   }
 
-  Serial.printf("[Settings] 已加载: 主题=%s 轮播=%s (间隔%u秒)\n",
+  Serial.printf("[Settings] 已加载: 主题=%s 轮播=%s (间隔%u秒) 模式=%d 发声=%s 音量=%d\n",
                 app.darkTheme ? "暗" : "亮",
                 app.autoScroll ? "开" : "关",
-                app.autoScrollSec);
+                app.autoScrollSec,
+                app.hardwareMode,
+                app.audioEnabled ? "开" : "静音",
+                app.audioVolume);
   Serial.printf("[Settings] WiFi SSID: [%s]\n", wifi_ssid);
   Serial.printf("[Settings] WiFi PASS: [%s]\n", strlen(wifi_pass) > 0 ? "****" : "");
   Serial.printf("[Settings] PC IP 数量: %d\n", pc_ip_count);
@@ -94,9 +114,41 @@ void settings_save() {
   EEPROM.write(EEPROM_AUTOSCRL_ADDR, app.autoScroll ? 1 : 0);
   EEPROM.write(EEPROM_SCRLTIME_ADDR,     app.autoScrollSec & 0xFF);
   EEPROM.write(EEPROM_SCRLTIME_ADDR + 1, (app.autoScrollSec >> 8) & 0xFF);
+  EEPROM.write(EEPROM_HWMODE_ADDR,       app.hardwareMode);
+  EEPROM.write(EEPROM_AUDIOEN_ADDR,      app.audioEnabled ? 1 : 0);
+  EEPROM.write(EEPROM_VOLUME_ADDR,       app.audioVolume);
   EEPROM.commit();
   yield();
   Serial.println("[Settings] 配置已保存");
+}
+
+void settings_saveHardwareMode(uint8_t mode) {
+  if (mode < 1 || mode > 5) return;
+  app.hardwareMode = mode;
+  EEPROM.write(EEPROM_MAGIC_ADDR,  EEPROM_MAGIC_VALUE);
+  EEPROM.write(EEPROM_HWMODE_ADDR, mode);
+  EEPROM.commit();
+  yield();
+  Serial.printf("[Settings] 硬件模式已保存: %d\n", mode);
+}
+
+void settings_saveAudioEnabled(bool en) {
+  app.audioEnabled = en;
+  EEPROM.write(EEPROM_MAGIC_ADDR,   EEPROM_MAGIC_VALUE);
+  EEPROM.write(EEPROM_AUDIOEN_ADDR, en ? 1 : 0);
+  EEPROM.commit();
+  yield();
+  Serial.printf("[Settings] 全局发声开关已保存: %s\n", en ? "开" : "静音");
+}
+
+void settings_saveAudioVolume(uint8_t vol) {
+  if (vol > 30) vol = 30;
+  app.audioVolume = vol;
+  EEPROM.write(EEPROM_MAGIC_ADDR,   EEPROM_MAGIC_VALUE);
+  EEPROM.write(EEPROM_VOLUME_ADDR,  vol);
+  EEPROM.commit();
+  yield();
+  Serial.printf("[Settings] 音量已保存: %d/30\n", vol);
 }
 
 void settings_saveWiFi(const char* ssid, const char* pass) {
